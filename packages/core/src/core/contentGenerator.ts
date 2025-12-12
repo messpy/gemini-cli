@@ -14,6 +14,7 @@ import {
   GoogleGenAI,
 } from '@google/genai';
 import { createCodeAssistContentGenerator } from '../code_assist/codeAssist.js';
+import { createOllamaContentGenerator } from '../ollama/ollama.js';
 import { DEFAULT_GEMINI_MODEL } from '../config/models.js';
 import { getEffectiveModel } from './modelCheck.js';
 
@@ -38,6 +39,7 @@ export enum AuthType {
   LOGIN_WITH_GOOGLE_PERSONAL = 'oauth-personal',
   USE_GEMINI = 'gemini-api-key',
   USE_VERTEX_AI = 'vertex-ai',
+  USE_OLLAMA = 'ollama',
 }
 
 export type ContentGeneratorConfig = {
@@ -45,6 +47,7 @@ export type ContentGeneratorConfig = {
   apiKey?: string;
   vertexai?: boolean;
   authType?: AuthType | undefined;
+  ollamaHost?: string;
 };
 
 export async function createContentGeneratorConfig(
@@ -56,6 +59,8 @@ export async function createContentGeneratorConfig(
   const googleApiKey = process.env.GOOGLE_API_KEY;
   const googleCloudProject = process.env.GOOGLE_CLOUD_PROJECT;
   const googleCloudLocation = process.env.GOOGLE_CLOUD_LOCATION;
+  const ollamaHost = process.env.OLLAMA_HOST;
+  const ollamaModel = process.env.OLLAMA_MODEL;
 
   // Use runtime model from config if available, otherwise fallback to parameter or default
   const effectiveModel = config?.getModel?.() || model || DEFAULT_GEMINI_MODEL;
@@ -67,6 +72,13 @@ export async function createContentGeneratorConfig(
 
   // if we are using google auth nothing else to validate for now
   if (authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL) {
+    return contentGeneratorConfig;
+  }
+
+  // Ollama configuration
+  if (authType === AuthType.USE_OLLAMA) {
+    contentGeneratorConfig.ollamaHost = ollamaHost || 'http://127.0.0.1:11434';
+    contentGeneratorConfig.model = ollamaModel || 'llama3.2';
     return contentGeneratorConfig;
   }
 
@@ -111,6 +123,10 @@ export async function createContentGenerator(
   };
   if (config.authType === AuthType.LOGIN_WITH_GOOGLE_PERSONAL) {
     return createCodeAssistContentGenerator(httpOptions, config.authType);
+  }
+
+  if (config.authType === AuthType.USE_OLLAMA) {
+    return createOllamaContentGenerator(config.ollamaHost, config.model);
   }
 
   if (
