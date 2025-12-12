@@ -61,10 +61,13 @@ describe('OllamaServer', () => {
       });
 
       expect(result.candidates).toBeDefined();
-      expect(result.candidates![0].content.parts[0]).toEqual({
+      expect(result.candidates).toHaveLength(1);
+      const candidate = result.candidates![0]!;
+      expect(candidate.content?.parts).toBeDefined();
+      expect(candidate.content?.parts![0]).toEqual({
         text: 'Hello, world!',
       });
-      expect(result.candidates![0].finishReason).toBe(FinishReason.STOP);
+      expect(candidate.finishReason).toBe(FinishReason.STOP);
       expect(result.usageMetadata?.totalTokenCount).toBe(15);
     });
 
@@ -90,7 +93,8 @@ describe('OllamaServer', () => {
       });
 
       expect(result.candidates).toBeDefined();
-      expect(result.candidates![0].content.parts[0].text).toBe('Response');
+      const candidate = result.candidates![0]!;
+      expect(candidate.content?.parts![0].text).toBe('Response');
     });
 
     it('should include system instruction if provided', async () => {
@@ -153,8 +157,10 @@ describe('OllamaServer', () => {
       }
 
       expect(chunks.length).toBe(3);
-      expect(chunks[0].candidates![0].content.parts[0].text).toBe('Hello');
-      expect(chunks[2].candidates![0].finishReason).toBe(FinishReason.STOP);
+      const firstChunk = chunks[0]!;
+      const lastChunk = chunks[2]!;
+      expect(firstChunk.candidates![0]!.content?.parts![0].text).toBe('Hello');
+      expect(lastChunk.candidates![0]!.finishReason).toBe(FinishReason.STOP);
     });
   });
 
@@ -200,8 +206,8 @@ describe('OllamaServer', () => {
       });
 
       expect(result.embeddings).toBeDefined();
-      expect(result.embeddings.length).toBe(1);
-      expect(result.embeddings[0].values).toEqual([0.1, 0.2, 0.3, 0.4]);
+      expect(result.embeddings).toHaveLength(1);
+      expect(result.embeddings?.[0]?.values).toEqual([0.1, 0.2, 0.3, 0.4]);
     });
 
     it('should handle multiple content items', async () => {
@@ -217,7 +223,7 @@ describe('OllamaServer', () => {
         contents: ['content 1', 'content 2'],
       });
 
-      expect(result.embeddings.length).toBe(2);
+      expect(result.embeddings).toHaveLength(2);
     });
   });
 });

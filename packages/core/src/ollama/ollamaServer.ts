@@ -40,6 +40,21 @@ export class OllamaServer implements ContentGenerator {
     return [this.toContent(contents)];
   }
 
+  private isPart(content: unknown): content is Part {
+    if (typeof content !== 'object' || content === null) {
+      return false;
+    }
+    return (
+      'text' in content ||
+      'inlineData' in content ||
+      'functionCall' in content ||
+      'functionResponse' in content ||
+      'executableCode' in content ||
+      'codeExecutionResult' in content ||
+      'fileData' in content
+    );
+  }
+
   private toContent(content: ContentUnion): Content {
     if (Array.isArray(content)) {
       // it's a PartUnion[]
@@ -55,8 +70,7 @@ export class OllamaServer implements ContentGenerator {
       };
     }
     // it's a Part or Content
-    if ('text' in content || 'inlineData' in content || 'functionCall' in content || 'functionResponse' in content || 'executableCode' in content || 'codeExecutionResult' in content || 'fileData' in content) {
-      // it's a Part
+    if (this.isPart(content)) {
       return {
         role: 'user',
         parts: [content as Part],
@@ -87,7 +101,9 @@ export class OllamaServer implements ContentGenerator {
           return part.text;
         }
         if ('inlineData' in part) {
-          // For now, skip inline data (images, etc.)
+          // Note: Binary data (images, etc.) is currently not supported in Ollama text API
+          // This returns a placeholder. For full multimodal support, additional
+          // implementation would be needed if Ollama provides such capabilities.
           return '[Binary data omitted]';
         }
         if ('functionCall' in part) {
@@ -133,9 +149,7 @@ export class OllamaServer implements ContentGenerator {
     return out;
   }
 
-  async generateContentStream(
-    req: GenerateContentParameters,
-  ): Promise<AsyncGenerator<GenerateContentResponse>> {
+  private prepareMessages(req: GenerateContentParameters): Message[] {
     const contents = this.toContents(req.contents);
     const messages = this.convertContentsToMessages(contents);
     const systemInstruction = req.config?.systemInstruction;
@@ -152,9 +166,13 @@ export class OllamaServer implements ContentGenerator {
       }
     }
 
-    const allMessages = systemMessage
-      ? [systemMessage, ...messages]
-      : messages;
+    return systemMessage ? [systemMessage, ...messages] : messages;
+  }
+
+  async generateContentStream(
+    req: GenerateContentParameters,
+  ): Promise<AsyncGenerator<GenerateContentResponse>> {
+    const allMessages = this.prepareMessages(req);
 
     const stream = await this.client.chat({
       model: req.model || this.model,
@@ -183,25 +201,7 @@ export class OllamaServer implements ContentGenerator {
   async generateContent(
     req: GenerateContentParameters,
   ): Promise<GenerateContentResponse> {
-    const contents = this.toContents(req.contents);
-    const messages = this.convertContentsToMessages(contents);
-    const systemInstruction = req.config?.systemInstruction;
-    let systemMessage: Message | undefined;
-
-    if (systemInstruction) {
-      if (typeof systemInstruction === 'string') {
-        systemMessage = { role: 'system', content: systemInstruction };
-      } else if ('parts' in systemInstruction) {
-        systemMessage = {
-          role: 'system',
-          content: this.convertPartsToContent(systemInstruction.parts || []),
-        };
-      }
-    }
-
-    const allMessages = systemMessage
-      ? [systemMessage, ...messages]
-      : messages;
+    const allMessages = this.prepareMessages(req);
 
     const response = await this.client.chat({
       model: req.model || this.model,
@@ -215,14 +215,23 @@ export class OllamaServer implements ContentGenerator {
   async countTokens(req: CountTokensParameters): Promise<CountTokensResponse> {
     const contents = this.toContents(req.contents);
 
-    // Ollama doesn't have a direct token counting API
-    // We'll approximate based on text length
+    // Note: Ollama does not provide a native token counting API.
+    // This implementation uses a rough character-based approximation.
+    // The 1 token ≈ 4 characters ratio is a general estimate and may vary
+    // significantly depending on:
+    // - The specific model's tokenizer (e.g., BPE, WordPiece, SentencePiece)
+    // - Language (non-English text may have different ratios)
+    // - Text content (code, natural language, special characters)
+    //
+    // For more accurate token counts, consider using the model's actual
+    // tokenizer if available outside of the Ollama API.
     const text = contents
       .map((content) => this.convertPartsToContent(content.parts || []))
       .join('\n');
 
-    // Rough approximation: 1 token ~= 4 characters
-    const approximateTokens = Math.ceil(text.length / 4);
+    // Character-to-token approximation ratio
+    const CHARS_PER_TOKEN = 4;
+    const approximateTokens = Math.ceil(text.length / CHARS_PER_TOKEN);
 
     return {
       totalTokens: approximateTokens,
