@@ -1,6 +1,6 @@
 ## Authentication Setup
 
-The Gemini CLI requires you to authenticate with Google's AI services. On initial startup you'll need to configure **one** of the following authentication methods:
+The Gemini CLI supports multiple authentication methods. On initial startup you'll need to configure **one** of the following:
 
 1.  **Login with Google (Gemini Code Assist):**
 
@@ -90,3 +90,17 @@ The Gemini CLI requires you to authenticate with Google's AI services. On initia
           echo 'export GOOGLE_GENAI_USE_VERTEXAI=true' >> ~/.bashrc
           source ~/.bashrc
           ```
+
+4.  **Ollama (Local or Cloud LLMs):**
+
+    - Use this option to connect to Ollama for running local or cloud-based open-source LLMs.
+    - **For local Ollama**: Install Ollama from [ollama.ai](https://ollama.ai/) and pull a model (e.g., `ollama pull llama3.2`). No additional configuration is needed; the CLI will automatically connect to your local Ollama instance.
+    - **For remote/cloud Ollama**: Set the `OLLAMA_HOST` environment variable to point to your remote Ollama server:
+      ```bash
+      export OLLAMA_HOST="http://your-ollama-server:11434"
+      ```
+    - **Optional**: Set the `OLLAMA_MODEL` environment variable to specify which model to use (defaults to `llama3.2`):
+      ```bash
+      export OLLAMA_MODEL="mistral"
+      ```
+    - For more details, see the [Ollama integration guide](./ollama.md).
