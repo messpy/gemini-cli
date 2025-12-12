@@ -49,7 +49,15 @@ If you need to use a specific model or require a higher request capacity, you ca
    export GEMINI_API_KEY="YOUR_API_KEY"
    ```
 
-For other authentication methods, including Google Workspace accounts, see the [authentication](./docs/cli/authentication.md) guide.
+### Using Ollama (Local LLMs):
+
+You can also use Ollama to run open-source models locally for complete privacy and offline usage:
+
+1. Install [Ollama](https://ollama.ai/) and pull a model (e.g., `ollama pull llama3.2`)
+2. Run `gemini` and select **Ollama** as the authentication method
+3. Start working with your local LLM!
+
+For other authentication methods, including Google Workspace accounts and detailed Ollama configuration, see the [authentication](./docs/cli/authentication.md) guide.
 
 ## Examples
 
